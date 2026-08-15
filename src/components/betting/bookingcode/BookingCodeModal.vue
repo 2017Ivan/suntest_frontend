@@ -125,8 +125,8 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useToast } from 'vue-toastification'
-import { useBookingCodeStore } from '../../../stores/bookingcode/bookingCodeStore.js'
-import { useBetStore } from '../../../stores/bets/betStore.js'
+import { useBookingCodeStore } from '../../../stores/bookingCode/useBookingCodeStore.js'
+import { useBetStore } from '../../../stores/bet/betStore.js'
 
 // ---- Props ----
 const props = defineProps({

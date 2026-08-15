@@ -73,7 +73,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '../../stores/auth/authStore.js'
-import { useBetStore } from '../../stores/bets/betStore.js'
+import { useBetStore } from '../../stores/bet/betStore.js'
 import Header from '../../components/main components/header/Header.vue'
 import Footer from '../../components/main components/footer/Footer.vue'
 import BottomNav from '../../components/main components/BottomNav/BottomNav.vue'

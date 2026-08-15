@@ -75,7 +75,7 @@ import MatchCard from '../../components/betting/match Card/MatchCard.vue'
 import HeroSection from '../../components/ui/HeroSection/HeroCarousel.vue'
 import RecentWinners from '../../components/main components/RecentWinners/RecentWinners.vue'
 import GamesTabs from '../../components/ui/games/ GamesTabs.vue'
-import { useBetStore } from '../../stores/bets/betStore.js'
+import { useBetStore } from '../../stores/bet/betStore.js'
 import gamesData from '../../assets/DataManager/MatchePaser.js'
 import HomePageSkeleton from '../../components/skeletons/home/HomePageSkeleton.vue'
 

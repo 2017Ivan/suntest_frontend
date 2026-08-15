@@ -55,7 +55,7 @@
 </template>
 
 <script setup>
-import { useBetStore } from '../../../stores/bets/betStore.js'
+import { useBetStore } from '../../../stores/bet/betStore.js'
 
 const props = defineProps({
   game: {
