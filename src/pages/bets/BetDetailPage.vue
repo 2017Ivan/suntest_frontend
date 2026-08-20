@@ -241,8 +241,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useBetStore } from '../../stores/bets/betStore.js'
-import { useBookingCodeStore } from '../../stores/bookingcode/bookingCodeStore.js'
+import { useBetStore } from '../../stores/bet/betStore.js'
+import { useBookingCodeStore } from '../../stores/bookingCode/useBookingCodeStore.js'
 
 const router = useRouter()
 const route = useRoute()

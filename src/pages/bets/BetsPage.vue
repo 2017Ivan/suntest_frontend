@@ -132,9 +132,9 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useBetStore } from '../../stores/bets/betStore.js'
-import { useBookingCodeStore } from '../../stores/bookingcode/bookingCodeStore.js'
-import BetCard from './component/ BetCard.vue'
+import { useBetStore } from '../../stores/bet/betStore.js'
+import { useBookingCodeStore } from '../../stores/bookingCode/useBookingCodeStore.js'
+import BetCard from './component/BetCard.vue'
 
 const router = useRouter()
 const betStore = useBetStore()

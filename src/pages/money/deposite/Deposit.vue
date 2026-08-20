@@ -184,7 +184,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../../stores/auth/authStore'
-import { useFinancialStore } from '../../../stores/financial/financialStore'
+import { useFinancialStore } from '../../../stores/money/moneyStore'
 
 const router = useRouter()
 const authStore = useAuthStore()

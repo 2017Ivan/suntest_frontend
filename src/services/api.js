@@ -5,9 +5,10 @@ import axios from 'axios'
 // http://localhost:5000/api
 // https://boombet365.com/api
 // https://boombet365.com/api
+// http://169.58.130.62/api
 // Create axios instance
 const api = axios.create({
-  baseURL: 'http://169.58.130.62/api',
+  baseURL: 'http://localhost:5000/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',   
