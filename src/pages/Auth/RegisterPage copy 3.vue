@@ -10,11 +10,11 @@
       <AppInput
         v-model="form.phone"
         label="Phone Number"
-        placeholder="Enter 9 digit number"
+        placeholder="Enter phone number (e.g., 2556XXXXXXXX)"
         type="tel"
         required
         :phone="true"
-        hint="Enter 9 digits (e.g., 798764567)"
+        hint="Enter 255 followed by 9 digits (e.g., 255798764567)"
         :error="errors.phone"
       >
         <template #icon-left>
@@ -133,46 +133,45 @@ const validatePhone = (phone) => {
   // Remove all non-digit characters
   const cleaned = String(phone).replace(/\D/g, '')
   
-  // Must be exactly 9 digits
-  if (cleaned.length !== 9) {
-    return 'Phone number must be exactly 9 digits'
+  // Check if it starts with 255 (Tanzania country code)
+  if (!cleaned.startsWith('255')) {
+    return 'Phone number must start with 255 (e.g., 255798764567)'
   }
   
-  // Must start with 6, 7, or 4
-  const validPrefixes = ['6', '7', '4']
-  if (!validPrefixes.includes(cleaned[0])) {
-    return 'Phone number must start with 6, 7, or 4'
+  // Should be exactly 12 digits (255 + 9 digits)
+  if (cleaned.length !== 12) {
+    return 'Phone number must be exactly 12 digits (255 + 9 digits)'
+  }
+  
+  // Check if the next digit after 255 is valid (6, 7, or 4)
+  const networkDigit = cleaned[3]
+  if (!['6', '7', '4'].includes(networkDigit)) {
+    return 'Phone number must be 2556, 2557, or 2554 format'
   }
   
   return null
 }
 
-// ---- Format phone to 255 + 9 digits ----
-const formatPhoneForAPI = (phone) => {
+// ---- Format phone to 255 format ----
+const formatPhoneNumber = (phone) => {
   if (!phone) return ''
   
   // Remove all non-digit characters
   let cleaned = String(phone).replace(/\D/g, '')
   
-  // If it's 9 digits, add 255 prefix
-  if (cleaned.length === 9) {
-    return '255' + cleaned
-  }
-  
-  // If it already has 255 and is 12 digits, return as is
-  if (cleaned.length === 12 && cleaned.startsWith('255')) {
-    return cleaned
-  }
-  
-  // If it starts with 0, replace with 255
+  // If user entered 0 at start, convert to 255
   if (cleaned.startsWith('0')) {
-    const withoutZero = cleaned.substring(1)
-    if (withoutZero.length === 9) {
-      return '255' + withoutZero
+    cleaned = '255' + cleaned.substring(1)
+  }
+  
+  // If user entered less than 12 digits, try to add 255
+  if (cleaned.length < 12 && cleaned.length > 3) {
+    // Check if it has 9 digits (local format)
+    if (cleaned.length === 9) {
+      cleaned = '255' + cleaned
     }
   }
   
-  // Return cleaned as fallback
   return cleaned
 }
 
@@ -182,7 +181,13 @@ const handleRegister = async () => {
   registerError.value = ''
   let valid = true
 
-  // Validate phone (must be 9 digits)
+  // Format phone number
+  form.value.phone = formatPhoneNumber(form.value.phone)
+
+  console.log('🔄 Starting register process...')
+  console.log('📱 Phone after formatting:', form.value.phone)
+
+  // Validate phone
   const phoneError = validatePhone(form.value.phone)
   if (phoneError) {
     errors.value.phone = phoneError
@@ -206,18 +211,11 @@ const handleRegister = async () => {
 
   if (!valid) return
 
-  // Format phone to 255 + 9 digits for API
-  const formattedPhone = formatPhoneForAPI(form.value.phone)
-
-  console.log('🔄 Starting register process...')
-  console.log('📱 Original phone (user input):', form.value.phone)
-  console.log('📱 Formatted phone (for API):', formattedPhone)
-
   loading.value = true
 
   try {
     const result = await authStore.register(
-      formattedPhone,  // Send with 255 prefix
+      form.value.phone,
       form.value.password
     )
 

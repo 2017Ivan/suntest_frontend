@@ -17,7 +17,7 @@
             </svg>
             <h3 class="text-xl font-bold text-gray-600">No Matches Found</h3>
             <p class="text-sm text-gray-500 max-w-sm">
-              There are currently no upcoming matches available. Please check back later.
+              There are currently no matches available. Please check back later for upcoming games.
             </p>
             <button 
               @click="refreshMatches" 
@@ -87,7 +87,7 @@ import HomePageSkeleton from '../../components/skeletons/home/HomePageSkeleton.v
 
 const router = useRouter()
 const matchStore = useMatchStore()
-const { upcomingMatches, loading } = storeToRefs(matchStore)
+const { upcomingMatches, liveMatches, loading } = storeToRefs(matchStore)
 
 const isLoading = ref(true)
 const allGames = ref([])
@@ -98,24 +98,98 @@ const navigateToMatch = (matchId) => router.push({ name: 'sport-detail', params:
 const refreshMatches = async () => await loadGames()
 
 // ============================================
-// 🔄 TRANSFORM MATCH (UPCOMING ONLY)
+// 📅 TIME & DATE FORMATTERS
 // ============================================
+
+const formatDate = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  if (isNaN(date.getTime())) return dateString
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const dayName = days[date.getDay()]
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  return `${dayName} ${day}/${month}`
+}
+
+const formatTimeWithAMPM = (timeStr) => {
+  if (!timeStr) return ''
+  
+  // Format kama inakuja kama HH:mm
+  if (timeStr.includes(':')) {
+    const parts = timeStr.split(':')
+    const hours = parseInt(parts[0], 10)
+    const minutes = parseInt(parts[1], 10)
+    if (!isNaN(hours) && !isNaN(minutes)) {
+      const ampm = hours >= 12 ? 'PM' : 'AM'
+      const hour12 = hours % 12 || 12
+      return `${String(hour12).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${ampm}`
+    }
+  }
+  return timeStr
+}
+
+// ============================================
+// ⏱️ CURRENT MINUTE LOGIC
+// ============================================
+
+const getCurrentMinute = (match) => {
+  if (!match) return null
+
+  // 1. Kutoka WebSockets au Store direct property
+  if (match.elapsed_minute !== undefined && match.elapsed_minute !== null) return match.elapsed_minute
+  if (match.current_minute !== undefined && match.current_minute !== null) return match.current_minute
+
+  // 2. Kutoka predetermined timeline events
+  if (match.predetermined_script?.events_timeline) {
+    const events = match.predetermined_script.events_timeline.filter(e => 
+      !['FULL_TIME', 'HALF_TIME'].includes(e.type)
+    )
+    if (events.length > 0) {
+      const lastEvent = events[events.length - 1]
+      if (lastEvent?.minute !== undefined) return lastEvent.minute
+    }
+  }
+
+  return null
+}
+
+// ============================================
+// 🔄 TRANSFORM MATCH
+// ============================================
+
 const transformMatch = (dbMatch) => {
   const odds1X2 = dbMatch.odds?.['1X2'] || dbMatch.odds || {}
+  let displayTime = ''
+
+  if (dbMatch.status === 'LIVE' || dbMatch.status === 'HALF_TIME') {
+    const minute = getCurrentMinute(dbMatch)
+    if (dbMatch.status === 'HALF_TIME') {
+      displayTime = 'HT'
+    } else if (minute !== null) {
+      displayTime = minute >= 90 ? `90+${minute - 90}'` : `${minute}'`
+    } else {
+      displayTime = 'LIVE'
+    }
+  } else if (dbMatch.status === 'FINISHED') {
+    displayTime = 'FT'
+  } else {
+    // UPCOMING MATCHES
+    const timeStr = formatTimeWithAMPM(dbMatch.time)
+    const dateStr = formatDate(dbMatch.date)
+    displayTime = dateStr ? `${timeStr} ${dateStr}` : timeStr
+  }
 
   return {
     id: dbMatch.id || dbMatch.match_id,
     league: dbMatch.league || 'Unknown League',
-    time: dbMatch.time || dbMatch.match_time || '',
-    date: dbMatch.date || dbMatch.match_date || '',
-    elapsed_minute: null,
+    time: displayTime,
+    date: dbMatch.date || '',
     status: dbMatch.status || 'UPCOMING',
-    live: false,
     sport: detectSport(dbMatch.league),
-    homeTeam: dbMatch.home_team || dbMatch.homeTeam || 'Unknown',
-    awayTeam: dbMatch.away_team || dbMatch.awayTeam || 'Unknown',
-    currentScore: { home: 0, away: 0 },
-    predetermined_script: dbMatch.predetermined_script,
+    homeTeam: dbMatch.home_team || 'Unknown',
+    awayTeam: dbMatch.away_team || 'Unknown',
+    currentScore: dbMatch.current_score || { home: 0, away: 0 },
     odds: {
       home: parseFloat(odds1X2['1'] || odds1X2.home) || null,
       draw: parseFloat(odds1X2['X'] || odds1X2.draw) || null,
@@ -136,7 +210,8 @@ const loadGames = async () => {
   isLoading.value = true
   try {
     await matchStore.fetchAllMatches()
-    const mapped = upcomingMatches.value.map(transformMatch)
+    const allMatches = [...liveMatches.value, ...upcomingMatches.value]
+    const mapped = allMatches.map(transformMatch)
     allGames.value = mapped
     displayGames.value = mapped.slice(0, 15)
   } catch (error) {
@@ -157,9 +232,10 @@ const groupedGames = computed(() => {
 
 const totalGamesCount = computed(() => allGames.value.length)
 
-watch(upcomingMatches, (newMatches) => {
+watch([upcomingMatches, liveMatches], () => {
   if (!loading.value) {
-    const mapped = newMatches.map(transformMatch)
+    const allMatches = [...liveMatches.value, ...upcomingMatches.value]
+    const mapped = allMatches.map(transformMatch)
     allGames.value = mapped
     displayGames.value = mapped.slice(0, 15)
   }

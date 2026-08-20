@@ -11,7 +11,7 @@ const HomePage = () => import("../pages/home/HomePage.vue");
 const DashboardPage = () => import("../pages/Dashboard/DashboardPage.vue");
 const SportsPage = () => import("../pages/sport/SportsPage.vue");
 const SportDetailPage = () => import("../pages/sport/view/SportDetailPage.vue"); 
-const LivePage = () => import("../pages/live/LivePage.vue");
+const LivePage = () => import("../pages/sport/live/LivePage.vue");
 const CasinoPage = () => import("../pages/casino/CasinoPage.vue");
 const AviatorPage = () => import("../pages/aviator/AviatorPage.vue");
 const VirtualsPage = () => import("../pages/virtual/VirtualsPage.vue");
@@ -24,6 +24,7 @@ const NotFoundPage = () => import("../pages/notfound/NotFoundPage.vue");
 const ProfilePage = () => import("../pages/profile/ProfilePage.vue");
 const DepositePage = () => import("../pages/money/deposite/Deposit.vue");
 const WithdrawPage = () => import("../pages/money/withdraw/Withdraw.vue");
+const LeaderBoard = () => import("../pages/leaderBoard/LeaderboardPage.vue")
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 const routes = [
@@ -75,6 +76,7 @@ const routes = [
         component: SportsPage,
         meta: { title: "Sports" },
       },
+       
       {
         path: "sport-detail/:id",
         name: "sport-detail",
@@ -93,6 +95,12 @@ const routes = [
         name: "casino",
         component: CasinoPage,
         meta: { title: "Casino" },
+      },
+      {
+        path: "leaderboard",
+        name: "leaderboard",
+        component: LeaderBoard,
+        meta: { title: "leaderboard" },
       },
       {
         path: "casino/aviator",
@@ -239,7 +247,7 @@ const routes = [
       {
         path: "fixtures",
         name: "admin-fixtures",
-        component: () => import('../pages/admin/components/AdminFixtures.vue'),
+        component: () => import('../pages/admin/components/fixctures/AdminFixtures.vue'),
         meta: { 
           title: "Fixtures", 
           requiresAuth: true, 

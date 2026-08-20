@@ -12,7 +12,6 @@
         label="Phone Number"
         placeholder="Enter 9 digit number"
         type="tel"
-      
         required
         :phone="true"
         hint="Enter 9 digits (e.g., 798764567)"
@@ -117,50 +116,18 @@ const errors = ref({ phone: '', password: '' })
 const validatePhone = (phone) => {
   if (!phone) return 'Phone number is required'
   
-  // Remove all non-digit characters
   const cleaned = String(phone).replace(/\D/g, '')
   
-  // Must be exactly 9 digits
   if (cleaned.length !== 9) {
     return 'Phone number must be exactly 9 digits'
   }
   
-  // Must start with 6, 7, or 4
   const validPrefixes = ['6', '7', '4']
   if (!validPrefixes.includes(cleaned[0])) {
     return 'Phone number must start with 6, 7, or 4'
   }
   
   return null
-}
-
-// ---- Format phone to 255 + 9 digits ----
-const formatPhoneForAPI = (phone) => {
-  if (!phone) return ''
-  
-  // Remove all non-digit characters
-  let cleaned = String(phone).replace(/\D/g, '')
-  
-  // If it's 9 digits, add 255 prefix
-  if (cleaned.length === 9) {
-    return '255' + cleaned
-  }
-  
-  // If it already has 255 and is 12 digits, return as is
-  if (cleaned.length === 12 && cleaned.startsWith('255')) {
-    return cleaned
-  }
-  
-  // If it starts with 0, replace with 255
-  if (cleaned.startsWith('0')) {
-    const withoutZero = cleaned.substring(1)
-    if (withoutZero.length === 9) {
-      return '255' + withoutZero
-    }
-  }
-  
-  // Return cleaned as fallback
-  return cleaned
 }
 
 // ---- Go to Forgot Password ----
@@ -174,7 +141,10 @@ const handleLogin = async () => {
   loginError.value = ''
   let valid = true
 
-  // Validate phone (must be 9 digits)
+  console.log('🔄 Starting login process...')
+  console.log('📱 Phone:', form.value.phone)
+
+  // Validate phone
   const phoneError = validatePhone(form.value.phone)
   if (phoneError) {
     errors.value.phone = phoneError
@@ -192,41 +162,40 @@ const handleLogin = async () => {
 
   if (!valid) return
 
-  // Format phone to 255 + 9 digits for API
-  const formattedPhone = formatPhoneForAPI(form.value.phone)
-  
-  console.log('🔄 Starting login process...')
-  console.log('📱 Original phone (user input):', form.value.phone)
-  console.log('📱 Formatted phone (for API):', formattedPhone)
-
   loading.value = true
   
   try {
     const result = await authStore.login(
-      formattedPhone,  // Send with 255 prefix
+      form.value.phone,
       form.value.password
     )
 
     console.log('📨 Login result:', result)
 
+    // ONLY redirect if login was successful
     if (result.success) {
       console.log('✅ Login successful!')
       
+      // Check if store is updated
       if (!authStore.isLoggedIn) {
         console.warn('⚠️ Store says not logged in, re-initializing...')
         await authStore.initialize()
       }
       
+      // Small delay
       await new Promise(resolve => setTimeout(resolve, 100))
       
       const redirect = route.query.redirect || '/'
       console.log('🔄 Redirecting to:', redirect)
       
+      // 👇 USE replace to avoid back button issues
       router.replace(redirect)
     } else {
+      // 👇 SHOW ERROR - DO NOT REDIRECT
       console.log('❌ Login failed:', result.message)
       loginError.value = result.message || 'Login failed. Please try again.'
       
+      // Set field-specific errors
       if (result.message?.toLowerCase().includes('phone') || 
           result.message?.toLowerCase().includes('number') ||
           result.message?.toLowerCase().includes('not found')) {
@@ -235,11 +204,14 @@ const handleLogin = async () => {
         errors.value.password = result.message
       }
       
+      // 👇 IMPORTANT: Stay on login page
+      // Do NOT redirect
       return
     }
   } catch (error) {
     console.error('❌ Login error:', error)
     loginError.value = 'An unexpected error occurred. Please try again.'
+    // 👇 Stay on login page
   } finally {
     loading.value = false
   }

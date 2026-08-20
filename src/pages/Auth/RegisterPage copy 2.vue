@@ -14,7 +14,7 @@
         type="tel"
         required
         :phone="true"
-        hint="Enter 9 digits (e.g., 798764567)"
+        hint="Enter 9 digits without 0 or 255 (e.g., 798764567)"
         :error="errors.phone"
       >
         <template #icon-left>
@@ -101,6 +101,8 @@
   </div>
 </template>
 
+
+<!-- pages/Auth/RegisterPage.vue -->
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -130,15 +132,12 @@ const errors = ref({ phone: '', password: '', agreed: '' })
 const validatePhone = (phone) => {
   if (!phone) return 'Phone number is required'
   
-  // Remove all non-digit characters
   const cleaned = String(phone).replace(/\D/g, '')
   
-  // Must be exactly 9 digits
   if (cleaned.length !== 9) {
     return 'Phone number must be exactly 9 digits'
   }
   
-  // Must start with 6, 7, or 4
   const validPrefixes = ['6', '7', '4']
   if (!validPrefixes.includes(cleaned[0])) {
     return 'Phone number must start with 6, 7, or 4'
@@ -147,42 +146,16 @@ const validatePhone = (phone) => {
   return null
 }
 
-// ---- Format phone to 255 + 9 digits ----
-const formatPhoneForAPI = (phone) => {
-  if (!phone) return ''
-  
-  // Remove all non-digit characters
-  let cleaned = String(phone).replace(/\D/g, '')
-  
-  // If it's 9 digits, add 255 prefix
-  if (cleaned.length === 9) {
-    return '255' + cleaned
-  }
-  
-  // If it already has 255 and is 12 digits, return as is
-  if (cleaned.length === 12 && cleaned.startsWith('255')) {
-    return cleaned
-  }
-  
-  // If it starts with 0, replace with 255
-  if (cleaned.startsWith('0')) {
-    const withoutZero = cleaned.substring(1)
-    if (withoutZero.length === 9) {
-      return '255' + withoutZero
-    }
-  }
-  
-  // Return cleaned as fallback
-  return cleaned
-}
-
 // ---- HANDLE REGISTER ----
 const handleRegister = async () => {
   errors.value = { phone: '', password: '', agreed: '' }
   registerError.value = ''
   let valid = true
 
-  // Validate phone (must be 9 digits)
+  console.log('🔄 Starting register process...')
+  console.log('📱 Phone:', form.value.phone)
+
+  // Validate phone
   const phoneError = validatePhone(form.value.phone)
   if (phoneError) {
     errors.value.phone = phoneError
@@ -206,36 +179,41 @@ const handleRegister = async () => {
 
   if (!valid) return
 
-  // Format phone to 255 + 9 digits for API
-  const formattedPhone = formatPhoneForAPI(form.value.phone)
-
-  console.log('🔄 Starting register process...')
-  console.log('📱 Original phone (user input):', form.value.phone)
-  console.log('📱 Formatted phone (for API):', formattedPhone)
-
   loading.value = true
 
   try {
     const result = await authStore.register(
-      formattedPhone,  // Send with 255 prefix
+      form.value.phone,
       form.value.password
     )
 
     console.log('📨 Register result:', result)
+    console.log('📊 AuthStore state:', {
+      isLoggedIn: authStore.isLoggedIn,
+      initialized: authStore.initialized,
+      user: authStore.user
+    })
 
     if (result.success) {
       console.log('✅ Registration successful!')
       
+      // 👇 Force re-initialize to make sure store is updated
       if (!authStore.isLoggedIn) {
         console.warn('⚠️ Store says not logged in, re-initializing...')
         await authStore.initialize()
+        console.log('📊 After re-init:', {
+          isLoggedIn: authStore.isLoggedIn,
+          initialized: authStore.initialized
+        })
       }
       
+      // 👇 Small delay to let store update
       await new Promise(resolve => setTimeout(resolve, 100))
       
       const redirect = route.query.redirect || '/'
       console.log('🔄 Redirecting to:', redirect)
       
+      // 👇 Use replace instead of push
       router.replace(redirect)
     } else {
       console.log('❌ Registration failed:', result.message)

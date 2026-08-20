@@ -72,11 +72,11 @@
           </div>
         </div>
 
-        <!-- No Upcoming Matches -->
+        <!-- No Live Matches -->
         <div v-if="Object.keys(filteredGames).length === 0" class="text-center py-12">
-          <!-- <div class="text-5xl mb-3">📅</div> -->
-          <p class="text-gray-400 text-sm">No upcoming matches available for this sport</p>
-          <p class="text-gray-500 text-xs mt-1">Check back later for updates</p>
+          <div class="text-5xl mb-3">🏟️</div>
+          <p class="text-gray-400 text-sm">No live matches available for this sport right now</p>
+          <p class="text-gray-500 text-xs mt-1">Check back soon when matches begin</p>
         </div>
 
       </div>
@@ -88,13 +88,13 @@
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import MatchCard from '../../components/betting/match Card/MatchCard.vue'
-import SportsPageSkeleton from '../../components/skeletons/sport/SportsPageSkeleton.vue'
-import { useMatchStore } from '../../stores/match/useMatchStore.js'
+import MatchCard from '../../../components/betting/match Card/MatchCard.vue'
+import SportsPageSkeleton from '../../../components/skeletons/sport/SportsPageSkeleton.vue'
+import { useMatchStore } from '../../../stores/match/useMatchStore.js'
 
 const router = useRouter()
 const matchStore = useMatchStore()
-const { upcomingMatches, loading } = storeToRefs(matchStore)
+const { liveMatches, loading } = storeToRefs(matchStore)
 
 // ---- State ----
 const isLoading = ref(true)
@@ -140,13 +140,13 @@ const transformMatch = (dbMatch) => {
     league: dbMatch.league || 'Unknown League',
     time: dbMatch.time || dbMatch.match_time || '',
     date: dbMatch.date || dbMatch.match_date || '',
-    elapsed_minute: null,
-    status: dbMatch.status || 'UPCOMING',
-    live: false,
+    elapsed_minute: dbMatch.elapsed_minute ?? dbMatch.current_minute,
+    status: dbMatch.status || 'LIVE',
+    live: true,
     sport: detectSport(dbMatch.league),
     homeTeam: dbMatch.home_team || dbMatch.homeTeam || 'Unknown',
     awayTeam: dbMatch.away_team || dbMatch.awayTeam || 'Unknown',
-    currentScore: { home: 0, away: 0 },
+    currentScore: dbMatch.current_score || dbMatch.score || { home: 0, away: 0 },
     predetermined_script: dbMatch.predetermined_script,
     odds: {
       home: parseFloat(odds1X2['1'] || odds1X2.home) || null,
@@ -157,15 +157,15 @@ const transformMatch = (dbMatch) => {
   }
 }
 
-// ---- Load Upcoming Games Only ----
+// ---- Load Live Games Only ----
 const loadGames = async () => {
   isLoading.value = true
   try {
     await matchStore.fetchAllMatches()
-    allGames.value = upcomingMatches.value.map(transformMatch)
+    allGames.value = liveMatches.value.map(transformMatch)
     updateSportCounts()
   } catch (error) {
-    console.error('Error loading upcoming sports games:', error)
+    console.error('Error loading live sports games:', error)
   } finally {
     isLoading.value = false
   }
@@ -202,10 +202,10 @@ const filteredGames = computed(() => {
   return groups
 })
 
-// Watch upcomingMatches updates in real-time
-watch(upcomingMatches, (newUpcomingMatches) => {
+// Watch liveMatches updates in real-time
+watch(liveMatches, (newLiveMatches) => {
   if (!loading.value) {
-    allGames.value = newUpcomingMatches.map(transformMatch)
+    allGames.value = newLiveMatches.map(transformMatch)
     updateSportCounts()
   }
 }, { deep: true })

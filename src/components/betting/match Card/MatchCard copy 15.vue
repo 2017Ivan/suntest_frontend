@@ -3,93 +3,89 @@
     @click="$emit('click')"
     class="bg-gray-800 py-2.5 px-2 border-b border-gray-700/40 cursor-pointer hover:bg-gray-750 transition-colors duration-150"
   >
-   <div class="flex items-center justify-between gap-2">
+    <div class="flex items-center justify-between gap-2">
       
-  <!-- Teams & Time Column -->
-  <div class="flex-1 min-w-0">
-    <!-- Status & Time Header -->
-    <div class="text-xs flex items-center gap-2 mb-1">
-      <span 
-        v-if="isLive" 
-        class="px-1.5 py-0.5 text-[10px] font-extrabold text-white bg-rose-600 rounded animate-pulse"
-      >
-        LIVE
-      </span>
-      <span 
-        v-else-if="game.status === 'HALF_TIME'" 
-        class="px-1.5 py-0.5 text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 rounded"
-      >
-        HT
-      </span>
-      <span 
-        v-else-if="game.status === 'FINISHED'" 
-        class="px-1.5 py-0.5 text-[10px] font-bold text-gray-400 bg-gray-700 rounded"
-      >
-        FT
-      </span>
+      <!-- Teams & Time Column -->
+      <div class="flex-1 min-w-0">
+        <!-- Status & Time Header -->
+        <div class="text-xs flex items-center gap-2 mb-1.5">
+          <span 
+            v-if="isLive" 
+            class="px-1.5 py-0.5 text-[10px] font-extrabold text-white bg-rose-600 rounded animate-pulse"
+          >
+            LIVE
+          </span>
+          <span 
+            v-else-if="game.status === 'HALF_TIME'" 
+            class="px-1.5 py-0.5 text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 rounded"
+          >
+            HT
+          </span>
+          <span 
+            v-else-if="game.status === 'FINISHED'" 
+            class="px-1.5 py-0.5 text-[10px] font-bold text-gray-400 bg-gray-700 rounded"
+          >
+            FT
+          </span>
 
-      <!-- Time Display (Live Minutes / HT / Upcoming Format) -->
-      <span 
-        class="text-xs font-semibold leading-none" 
-        :class="isLive ? 'text-rose-400 animate-pulse' : 'text-gray-400'"
-      >
-        {{ displayTime }}
-      </span>
-    </div>
+          <!-- Time Display (Live Minutes / HT / Upcoming Format) -->
+          <span 
+            class="text-xs font-semibold" 
+            :class="isLive ? 'text-rose-400 animate-pulse' : 'text-gray-400'"
+          >
+            {{ displayTime }}
+          </span>
+        </div>
 
-    <!-- Teams Name & Scores -->
-    <div class="space-y-1">
-      <!-- Home Team -->
-      <div class="flex items-center justify-between pr-2">
-        <span class="text-sm font-semibold text-gray-200 truncate leading-tight">
-          {{ game.homeTeam }}
-        </span>
-        <span v-if="isLiveOrFinished" class="text-sm font-bold text-rose-500 ml-2 leading-none">
-          {{ game.currentScore?.home ?? 0 }}
-        </span>
+        <!-- Teams Name & Scores -->
+        <div class="space-y-1">
+          <!-- Home Team -->
+          <div class="flex items-center justify-between pr-2">
+            <span class="text-sm font-semibold text-gray-200 truncate">{{ game.homeTeam }}</span>
+            <span v-if="isLiveOrFinished" class="text-sm font-bold text-rose-500 ml-2">
+              {{ game.currentScore?.home ?? 0 }}
+            </span>
+          </div>
+
+          <!-- Away Team -->
+          <div class="flex items-center justify-between pr-2">
+            <span class="text-sm font-semibold text-gray-200 truncate">{{ game.awayTeam }}</span>
+            <span v-if="isLiveOrFinished" class="text-sm font-bold text-rose-500 ml-2">
+              {{ game.currentScore?.away ?? 0 }}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <!-- Away Team -->
-      <div class="flex items-center justify-between pr-2">
-        <span class="text-sm font-semibold text-gray-200 truncate leading-tight">
-          {{ game.awayTeam }}
-        </span>
-        <span v-if="isLiveOrFinished" class="text-sm font-bold text-rose-500 ml-2 leading-none">
-          {{ game.currentScore?.away ?? 0 }}
-        </span>
+      <!-- Odds Buttons -->
+      <div class="flex gap-1 flex-shrink-0" @click.stop>
+        <button 
+          class="w-12 py-2 text-center text-xs font-bold transition-all duration-150 rounded"
+          :class="getButtonClass('home')"
+          @click="handleOddsClick('home')"
+          :disabled="!game.odds || !game.odds.home"
+        >
+          {{ formatOdds(game.odds?.home) }}
+        </button>
+        <button 
+          class="w-12 py-2 text-center text-xs font-bold transition-all duration-150 rounded"
+          :class="getButtonClass('draw')"
+          @click="handleOddsClick('draw')"
+          :disabled="!game.odds || !game.odds.draw"
+        >
+          {{ formatOdds(game.odds?.draw) }}
+        </button>
+        <button 
+          class="w-12 py-2 text-center text-xs font-bold transition-all duration-150 rounded"
+          :class="getButtonClass('away')"
+          @click="handleOddsClick('away')"
+          :disabled="!game.odds || !game.odds.away"
+        >
+          {{ formatOdds(game.odds?.away) }}
+        </button>
       </div>
+
     </div>
-  </div>
-
-  <!-- Odds Buttons (Aligned to Bottom/Center) -->
-  <div class="flex gap-1 flex-shrink-0 self-end pb-0.5" @click.stop>
-    <button 
-      class="w-12 py-2 text-center text-xs font-bold transition-all duration-150 rounded"
-      :class="getButtonClass('home')"
-      @click="handleOddsClick('home')"
-      :disabled="!game.odds || !game.odds.home"
-    >
-      {{ formatOdds(game.odds?.home) }}
-    </button>
-    <button 
-      class="w-12 py-2 text-center text-xs font-bold transition-all duration-150 rounded"
-      :class="getButtonClass('draw')"
-      @click="handleOddsClick('draw')"
-      :disabled="!game.odds || !game.odds.draw"
-    >
-      {{ formatOdds(game.odds?.draw) }}
-    </button>
-    <button 
-      class="w-12 py-2 text-center text-xs font-bold transition-all duration-150 rounded"
-      :class="getButtonClass('away')"
-      @click="handleOddsClick('away')"
-      :disabled="!game.odds || !game.odds.away"
-    >
-      {{ formatOdds(game.odds?.away) }}
-    </button>
-  </div>
-
-</div>
   </div>
 </template>
 

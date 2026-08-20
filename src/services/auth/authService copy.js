@@ -4,27 +4,8 @@ import api from '../api'
 const authService = {
   async register(phone_number, password) {
     try {
-      // Clean phone number
-      const cleanedPhone = phone_number.replace(/\D/g, '')
-      
-      // Ensure it starts with 255
-      let finalPhone = cleanedPhone
-      if (!cleanedPhone.startsWith('255')) {
-        // If it starts with 0, replace with 255
-        if (cleanedPhone.startsWith('0')) {
-          finalPhone = '255' + cleanedPhone.substring(1)
-        } else {
-          // If it's 9 digits local format, add 255
-          if (cleanedPhone.length === 9) {
-            finalPhone = '255' + cleanedPhone
-          }
-        }
-      }
-      
-      console.log('📱 Registering with phone:', finalPhone)
-      
       const response = await api.post('/auth/register', {
-        phone_number: finalPhone,
+        phone_number,
         password
       })
       
@@ -60,42 +41,34 @@ const authService = {
 
   async login(phone_number, password) {
     console.log('🚀 ===== AUTH SERVICE LOGIN CALLED =====')
-    
-    // Clean phone number
-    const cleanedPhone = phone_number.replace(/\D/g, '')
-    
-    // Ensure it starts with 255
-    let finalPhone = cleanedPhone
-    if (!cleanedPhone.startsWith('255')) {
-      if (cleanedPhone.startsWith('0')) {
-        finalPhone = '255' + cleanedPhone.substring(1)
-      } else if (cleanedPhone.length === 9) {
-        finalPhone = '255' + cleanedPhone
-      }
-    }
-    
-    console.log('📞 Original phone:', phone_number)
-    console.log('📞 Final phone (cleaned):', finalPhone)
+    console.log('📞 Phone:', phone_number)
     console.log('🔑 Password:', password)
     
     try {
       console.log('⏳ Calling API: POST /auth/login')
       
       const response = await api.post('/auth/login', {
-        phone_number: finalPhone,
+        phone_number,
         password
       })
       
       console.log('✅ ===== API RESPONSE RECEIVED =====')
+      console.log('📦 Full response object:', response)
+      console.log('📦 response.status:', response.status)
       console.log('📦 response.data:', response.data)
+      console.log('📦 response.data.data:', response.data?.data)
       
+      // Check if response has data
       if (response.data?.data) {
         const user = response.data.data.user
         const tokens = response.data.data.tokens
         
         console.log('👤 User data:', user)
         console.log('🔑 Tokens data:', tokens)
+        console.log('🔑 access_token:', tokens?.access_token)
+        console.log('🔑 refresh_token:', tokens?.refresh_token)
         
+        // Save tokens to localStorage
         if (tokens?.access_token) {
           localStorage.setItem('access_token', tokens.access_token)
           console.log('💾 access_token saved to localStorage')
@@ -105,7 +78,8 @@ const authService = {
           console.log('💾 refresh_token saved to localStorage')
         }
         
-        return {
+        // Return success with data
+        const result = {
           success: true,
           user: user,
           tokens: {
@@ -114,8 +88,12 @@ const authService = {
           },
           message: response.data.message || 'Login successful'
         }
+        
+        console.log('📤 Returning from authService:', result)
+        return result
       }
       
+      // If no data in response
       console.error('❌ No data in response:', response.data)
       return {
         success: false,
@@ -124,7 +102,11 @@ const authService = {
       
     } catch (error) {
       console.error('❌ ===== LOGIN ERROR =====')
+      console.error('❌ Error object:', error)
+      console.error('❌ error.message:', error.message)
+      console.error('❌ error.response:', error.response)
       console.error('❌ error.response?.data:', error.response?.data)
+      console.error('❌ error.response?.status:', error.response?.status)
       
       return {
         success: false,
@@ -199,22 +181,7 @@ const authService = {
 
   async forgotPassword(phone_number) {
     try {
-      // Clean phone number
-      const cleanedPhone = phone_number.replace(/\D/g, '')
-      
-      // Ensure it starts with 255
-      let finalPhone = cleanedPhone
-      if (!cleanedPhone.startsWith('255')) {
-        if (cleanedPhone.startsWith('0')) {
-          finalPhone = '255' + cleanedPhone.substring(1)
-        } else if (cleanedPhone.length === 9) {
-          finalPhone = '255' + cleanedPhone
-        }
-      }
-      
-      const response = await api.post('/auth/forgot-password', { 
-        phone_number: finalPhone 
-      })
+      const response = await api.post('/auth/forgot-password', { phone_number })
       
       return {
         success: true,
@@ -253,21 +220,8 @@ const authService = {
 
   async changePassword(phone_number, newPassword, confirmPassword) {
     try {
-      // Clean phone number
-      const cleanedPhone = phone_number.replace(/\D/g, '')
-      
-      // Ensure it starts with 255
-      let finalPhone = cleanedPhone
-      if (!cleanedPhone.startsWith('255')) {
-        if (cleanedPhone.startsWith('0')) {
-          finalPhone = '255' + cleanedPhone.substring(1)
-        } else if (cleanedPhone.length === 9) {
-          finalPhone = '255' + cleanedPhone
-        }
-      }
-      
       const response = await api.post('/auth/change-password', {
-        phone_number: finalPhone,
+        phone_number,
         newPassword,
         confirmPassword
       })
@@ -308,63 +262,7 @@ const authService = {
     }
   },
 
-  // ---- Helper function to format phone number ----
-  formatPhoneNumber(phone_number) {
-    if (!phone_number) return ''
-    
-    // Remove all non-digit characters
-    const cleaned = phone_number.replace(/\D/g, '')
-    
-    // If it already starts with 255, return as is
-    if (cleaned.startsWith('255')) {
-      return cleaned
-    }
-    
-    // If it starts with 0, replace with 255
-    if (cleaned.startsWith('0')) {
-      return '255' + cleaned.substring(1)
-    }
-    
-    // If it's 9 digits (local format), add 255
-    if (cleaned.length === 9) {
-      return '255' + cleaned
-    }
-    
-    // If it's less than 9 digits, it's invalid
-    if (cleaned.length < 9) {
-      return cleaned // Return as is, validation will catch it
-    }
-    
-    // Otherwise return cleaned
-    return cleaned
-  },
 
-  // ---- Validate phone number ----
-  validatePhoneNumber(phone_number) {
-    const formatted = this.formatPhoneNumber(phone_number)
-    
-    if (!formatted) {
-      return { valid: false, message: 'Phone number is required' }
-    }
-    
-    // Must start with 255
-    if (!formatted.startsWith('255')) {
-      return { valid: false, message: 'Phone number must start with 255' }
-    }
-    
-    // Must be exactly 12 digits (255 + 9 digits)
-    if (formatted.length !== 12) {
-      return { valid: false, message: 'Phone number must be exactly 12 digits (255 + 9 digits)' }
-    }
-    
-    // Network digit must be 6, 7, or 4
-    const networkDigit = formatted[3]
-    if (!['6', '7', '4'].includes(networkDigit)) {
-      return { valid: false, message: 'Phone number must be in format 2556, 2557, or 2554' }
-    }
-    
-    return { valid: true, formatted }
-  }
 }
 
 export default authService

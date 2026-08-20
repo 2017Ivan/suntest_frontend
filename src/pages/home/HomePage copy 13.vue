@@ -17,7 +17,7 @@
             </svg>
             <h3 class="text-xl font-bold text-gray-600">No Matches Found</h3>
             <p class="text-sm text-gray-500 max-w-sm">
-              There are currently no upcoming matches available. Please check back later.
+              There are currently no matches available. Please check back later for upcoming games.
             </p>
             <button 
               @click="refreshMatches" 
@@ -87,7 +87,7 @@ import HomePageSkeleton from '../../components/skeletons/home/HomePageSkeleton.v
 
 const router = useRouter()
 const matchStore = useMatchStore()
-const { upcomingMatches, loading } = storeToRefs(matchStore)
+const { upcomingMatches, liveMatches, loading } = storeToRefs(matchStore)
 
 const isLoading = ref(true)
 const allGames = ref([])
@@ -98,7 +98,7 @@ const navigateToMatch = (matchId) => router.push({ name: 'sport-detail', params:
 const refreshMatches = async () => await loadGames()
 
 // ============================================
-// 🔄 TRANSFORM MATCH (UPCOMING ONLY)
+// 🔄 TRANSFORM MATCH (BOOMBET STYLE PASS-THROUGH)
 // ============================================
 const transformMatch = (dbMatch) => {
   const odds1X2 = dbMatch.odds?.['1X2'] || dbMatch.odds || {}
@@ -108,13 +108,13 @@ const transformMatch = (dbMatch) => {
     league: dbMatch.league || 'Unknown League',
     time: dbMatch.time || dbMatch.match_time || '',
     date: dbMatch.date || dbMatch.match_date || '',
-    elapsed_minute: null,
-    status: dbMatch.status || 'UPCOMING',
-    live: false,
+    elapsed_minute: dbMatch.elapsed_minute ?? dbMatch.current_minute, // Direct copy for live minutes
+    status: dbMatch.status || (dbMatch.live ? 'LIVE' : 'UPCOMING'),
+    live: dbMatch.status === 'LIVE' || dbMatch.live || false,
     sport: detectSport(dbMatch.league),
     homeTeam: dbMatch.home_team || dbMatch.homeTeam || 'Unknown',
     awayTeam: dbMatch.away_team || dbMatch.awayTeam || 'Unknown',
-    currentScore: { home: 0, away: 0 },
+    currentScore: dbMatch.current_score || dbMatch.score || { home: 0, away: 0 },
     predetermined_script: dbMatch.predetermined_script,
     odds: {
       home: parseFloat(odds1X2['1'] || odds1X2.home) || null,
@@ -136,7 +136,8 @@ const loadGames = async () => {
   isLoading.value = true
   try {
     await matchStore.fetchAllMatches()
-    const mapped = upcomingMatches.value.map(transformMatch)
+    const allMatches = [...liveMatches.value, ...upcomingMatches.value]
+    const mapped = allMatches.map(transformMatch)
     allGames.value = mapped
     displayGames.value = mapped.slice(0, 15)
   } catch (error) {
@@ -157,9 +158,10 @@ const groupedGames = computed(() => {
 
 const totalGamesCount = computed(() => allGames.value.length)
 
-watch(upcomingMatches, (newMatches) => {
+watch([upcomingMatches, liveMatches], () => {
   if (!loading.value) {
-    const mapped = newMatches.map(transformMatch)
+    const allMatches = [...liveMatches.value, ...upcomingMatches.value]
+    const mapped = allMatches.map(transformMatch)
     allGames.value = mapped
     displayGames.value = mapped.slice(0, 15)
   }

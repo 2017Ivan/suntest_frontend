@@ -1,6 +1,6 @@
 <!-- SportsPage.vue -->
 <template>
-  <div class="mx-auto bg-gray-900 pb-10">
+  <div class="mx-auto bg-gray-900  pb-10">
     <!-- Loading State -->
     <SportsPageSkeleton v-if="isLoading" />
     
@@ -37,7 +37,7 @@
           class="mb-0"
         >
           <!-- League Header -->
-          <div class="sticky top-0 z-10 py-2 pl-1 bg-gradient-to-b from-gray-400 via-gray-100 to-gray-400 backdrop-blur-sm">
+          <div class="sticky top-0 z-10 py-2 pl-1 bg-gradient-to-b from-gray-400 via-gray-100 to-gray-400 backdrop-blur-sm"">
             <div class="flex items-center justify-between">
               <span class="text-xs font-bold text-gray-800 truncate">{{ leagueName }}</span>
 
@@ -72,10 +72,10 @@
           </div>
         </div>
 
-        <!-- No Upcoming Matches -->
+        <!-- No Matches -->
         <div v-if="Object.keys(filteredGames).length === 0" class="text-center py-12">
-          <!-- <div class="text-5xl mb-3">📅</div> -->
-          <p class="text-gray-400 text-sm">No upcoming matches available for this sport</p>
+          <div class="text-5xl mb-3">🏟️</div>
+          <p class="text-gray-400 text-sm">No matches available for this sport</p>
           <p class="text-gray-500 text-xs mt-1">Check back later for updates</p>
         </div>
 
@@ -94,7 +94,7 @@ import { useMatchStore } from '../../stores/match/useMatchStore.js'
 
 const router = useRouter()
 const matchStore = useMatchStore()
-const { upcomingMatches, loading } = storeToRefs(matchStore)
+const { upcomingMatches, liveMatches, loading } = storeToRefs(matchStore)
 
 // ---- State ----
 const isLoading = ref(true)
@@ -130,7 +130,7 @@ const detectSport = (league) => {
 }
 
 // ============================================
-// 🔄 TRANSFORM MATCH LOGIC
+// 🔄 TRANSFORM MATCH (HOMEPAGE & BOOMBET LOGIC)
 // ============================================
 const transformMatch = (dbMatch) => {
   const odds1X2 = dbMatch.odds?.['1X2'] || dbMatch.odds || {}
@@ -140,13 +140,13 @@ const transformMatch = (dbMatch) => {
     league: dbMatch.league || 'Unknown League',
     time: dbMatch.time || dbMatch.match_time || '',
     date: dbMatch.date || dbMatch.match_date || '',
-    elapsed_minute: null,
-    status: dbMatch.status || 'UPCOMING',
-    live: false,
+    elapsed_minute: dbMatch.elapsed_minute ?? dbMatch.current_minute, // Direct copy for live minutes
+    status: dbMatch.status || (dbMatch.live ? 'LIVE' : 'UPCOMING'),
+    live: dbMatch.status === 'LIVE' || dbMatch.live || false,
     sport: detectSport(dbMatch.league),
     homeTeam: dbMatch.home_team || dbMatch.homeTeam || 'Unknown',
     awayTeam: dbMatch.away_team || dbMatch.awayTeam || 'Unknown',
-    currentScore: { home: 0, away: 0 },
+    currentScore: dbMatch.current_score || dbMatch.score || { home: 0, away: 0 },
     predetermined_script: dbMatch.predetermined_script,
     odds: {
       home: parseFloat(odds1X2['1'] || odds1X2.home) || null,
@@ -157,15 +157,16 @@ const transformMatch = (dbMatch) => {
   }
 }
 
-// ---- Load Upcoming Games Only ----
+// ---- Load Games from Store ----
 const loadGames = async () => {
   isLoading.value = true
   try {
     await matchStore.fetchAllMatches()
-    allGames.value = upcomingMatches.value.map(transformMatch)
+    const allMatches = [...liveMatches.value, ...upcomingMatches.value]
+    allGames.value = allMatches.map(transformMatch)
     updateSportCounts()
   } catch (error) {
-    console.error('Error loading upcoming sports games:', error)
+    console.error('Error loading sports games:', error)
   } finally {
     isLoading.value = false
   }
@@ -202,10 +203,11 @@ const filteredGames = computed(() => {
   return groups
 })
 
-// Watch upcomingMatches updates in real-time
-watch(upcomingMatches, (newUpcomingMatches) => {
+// Watch Store updates in real-time
+watch([upcomingMatches, liveMatches], () => {
   if (!loading.value) {
-    allGames.value = newUpcomingMatches.map(transformMatch)
+    const allMatches = [...liveMatches.value, ...upcomingMatches.value]
+    allGames.value = allMatches.map(transformMatch)
     updateSportCounts()
   }
 }, { deep: true })
@@ -262,5 +264,8 @@ onUnmounted(() => {
 /* Sticky header offset */
 .sticky {
   position: sticky;
+}
+.top-12 {
+  top: 48px;
 }
 </style>

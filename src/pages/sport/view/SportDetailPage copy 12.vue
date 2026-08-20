@@ -41,19 +41,13 @@
       <div class="bg-gradient-to-b from-gray-800/50 to-gray-900/80 rounded-2xl border border-gray-700/40 p-4 shadow-xl backdrop-blur-sm">
         <div class="flex flex-col items-center">
           
-          <!-- Status & Live Time Badge -->
+          <!-- Status Badge -->
           <div class="mb-3">
-            <span v-if="isLive" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30">
-              <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span> LIVE {{ displayTime }}
-            </span>
-            <span v-else-if="matchData.status === 'HALF_TIME'" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-500 border border-amber-500/30">
-              HT
-            </span>
-            <span v-else-if="matchData.status === 'FINISHED'" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gray-700 text-gray-300 border border-gray-600">
-              FT
+            <span v-if="matchData.live" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30">
+              <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span> LIVE
             </span>
             <span v-else class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-gray-800/60 text-gray-400 border border-gray-700/60">
-              ⏳ {{ displayTime }}
+              ⏳ {{ matchData.time || 'Upcoming' }}
             </span>
           </div>
 
@@ -65,7 +59,7 @@
                 {{ getTeamInitials(matchData.homeTeam) }}
               </div>
               <span class="text-xs sm:text-sm font-bold text-gray-200 line-clamp-1">{{ matchData.homeTeam }}</span>
-              <span v-if="isLiveOrFinished" class="text-2xl font-black text-rose-400 mt-1">{{ matchData.score?.home ?? 0 }}</span>
+              <span v-if="matchData.live" class="text-2xl font-black text-rose-400 mt-1">{{ matchData.score?.home ?? 0 }}</span>
             </div>
 
             <!-- VS -->
@@ -80,7 +74,7 @@
                 {{ getTeamInitials(matchData.awayTeam) }}
               </div>
               <span class="text-xs sm:text-sm font-bold text-gray-200 line-clamp-1">{{ matchData.awayTeam }}</span>
-              <span v-if="isLiveOrFinished" class="text-2xl font-black text-rose-400 mt-1">{{ matchData.score?.away ?? 0 }}</span>
+              <span v-if="matchData.live" class="text-2xl font-black text-rose-400 mt-1">{{ matchData.score?.away ?? 0 }}</span>
             </div>
           </div>
 
@@ -163,112 +157,14 @@ const matchData = computed(() => {
     homeTeam: m.home_team || m.homeTeam,
     awayTeam: m.away_team || m.awayTeam,
     league: m.league,
-    time: m.time || m.match_time || '',
-    date: m.date || m.match_date || '',
-    elapsed_minute: m.elapsed_minute ?? m.current_minute,
-    status: m.status || (m.live ? 'LIVE' : 'UPCOMING'),
+    time: m.time,
+    date: m.date,
     live: m.status === 'LIVE' || m.live || false,
-    score: m.current_score || m.score || { home: 0, away: 0 }
+    score: m.current_score || { home: 0, away: 0 }
   }
 })
 
-const isLive = computed(() => matchData.value?.status === 'LIVE' || matchData.value?.live || false)
-
-const isLiveOrFinished = computed(() => {
-  if (!matchData.value) return false
-  return isLive.value || ['HALF_TIME', 'FINISHED'].includes(matchData.value.status)
-})
-
-// ============================================
-// 📅 HELPER FUNCTION FOR UPCOMING TIME FORMATTING
-// ============================================
-function formatUpcomingTime(dateStr, timeStr) {
-  if (!dateStr && !timeStr) return matchData.value?.time || ''
-
-  try {
-    let matchDateObj
-
-    if (dateStr && timeStr) {
-      matchDateObj = new Date(`${dateStr}T${timeStr}`)
-      if (isNaN(matchDateObj.getTime())) {
-        matchDateObj = new Date(`${dateStr} ${timeStr}`)
-      }
-    } else if (dateStr) {
-      matchDateObj = new Date(dateStr)
-    } else {
-      return timeStr
-    }
-
-    if (isNaN(matchDateObj.getTime())) {
-      return timeStr || dateStr
-    }
-
-    const today = new Date()
-    const isToday =
-      matchDateObj.getDate() === today.getDate() &&
-      matchDateObj.getMonth() === today.getMonth() &&
-      matchDateObj.getFullYear() === today.getFullYear()
-
-    const timeFormatted = matchDateObj.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    })
-
-    if (isToday) {
-      return `${timeFormatted} Today`
-    } else {
-      const dayName = matchDateObj.toLocaleDateString('en-US', { weekday: 'short' })
-      const dayNum = String(matchDateObj.getDate()).padStart(2, '0')
-      const monthNum = String(matchDateObj.getMonth() + 1).padStart(2, '0')
-
-      return `${timeFormatted} ${dayName} ${dayNum}/${monthNum}`
-    }
-  } catch (err) {
-    return timeStr || dateStr || ''
-  }
-}
-
-// ============================================
-// ⏱️ REALTIME COMPUTED TIME (MATCHCARD / BOOMBET LOGIC)
-// ============================================
-const displayTime = computed(() => {
-  if (!matchData.value) return ''
-
-  if (isLive.value) {
-    // 1. Kama Socket au Store ina elapsed_minute
-    if (matchData.value.elapsed_minute !== undefined && matchData.value.elapsed_minute !== null) {
-      const elapsed = parseInt(matchData.value.elapsed_minute)
-      return elapsed >= 90 ? "90+'" : `${elapsed}'`
-    }
-
-    // 2. Kama time ina string yenye dakika (mfano "35'")
-    if (typeof matchData.value.time === 'string' && matchData.value.time.includes("'")) {
-      return matchData.value.time
-    }
-
-    // 3. Clock time calculation
-    if (matchData.value.date && matchData.value.time && matchData.value.time.includes(':')) {
-      const matchStart = new Date(`${matchData.value.date} ${matchData.value.time}`)
-      const now = new Date()
-      const elapsedMinutes = Math.floor((now - matchStart) / (1000 * 60))
-
-      if (!isNaN(elapsedMinutes) && elapsedMinutes >= 0) {
-        return elapsedMinutes >= 90 ? "90+'" : `${elapsedMinutes}'`
-      }
-    }
-
-    return 'LIVE'
-  }
-
-  if (matchData.value.status === 'HALF_TIME') return 'HT'
-  if (matchData.value.status === 'FINISHED') return 'FT'
-
-  // UPCOMING MATCH DISPLAY FORMAT
-  return formatUpcomingTime(matchData.value.date, matchData.value.time)
-})
-
-// Majina ya Masoko kwa Kiingereza/Kiswahili Kizuri cha Betting
+// Majina ya Masoko kwa Kiswahili/Kiingereza Kizuri cha Betting
 const marketTitleMap = {
   '1X2': '1X2 | Full Time',
   'Double_Chance': 'Double Chance',
@@ -304,21 +200,25 @@ const formattedMarkets = computed(() => {
     const rawOptions = oddsObj[marketKey] || {}
     const optionsArray = []
     
+    // Kama tuna order mahususi (Mfano: 1, X, 2)
     if (optionOrderMap[marketKey]) {
       const preferredOrder = optionOrderMap[marketKey]
       
+      // 1. Weka vile vilivyo kwenye mpangilio unaotakiwa
       preferredOrder.forEach(key => {
         if (rawOptions[key] !== undefined) {
           optionsArray.push({ key: key, value: rawOptions[key] })
         }
       })
 
+      // 2. Kama kuna key yoyote iliyobaki kutoka DB, iongeze mwishoni
       Object.keys(rawOptions).forEach(key => {
         if (!preferredOrder.includes(key)) {
           optionsArray.push({ key: key, value: rawOptions[key] })
         }
       })
     } else {
+      // Masoko mengine badilisha tu kutoka Object kwenda Array
       Object.keys(rawOptions).forEach(key => {
         optionsArray.push({ key: key, value: rawOptions[key] })
       })
@@ -327,11 +227,12 @@ const formattedMarkets = computed(() => {
     return {
       key: marketKey,
       title: marketTitleMap[marketKey] || marketKey.replace(/_/g, ' '),
-      options: optionsArray
+      options: optionsArray // Hapa sasa ni Array badala ya Object!
     }
   })
 })
 
+// MPANGILIO WA GRID (Responsive Columns kulingana na aina ya soko)
 const getGridColsClass = (marketKey, totalOptions) => {
   if (marketKey === '1X2' || marketKey === 'Double_Chance' || marketKey === 'Highest_Scoring_Half') {
     return 'grid-cols-3'
@@ -348,6 +249,7 @@ const getGridColsClass = (marketKey, totalOptions) => {
   return 'grid-cols-2'
 }
 
+// Format Option Label ili ikae vizuri (Mfano: "OVER_2.5" -> "Over 2.5", "Home_Home" -> "Home / Home")
 const formatOptionLabel = (optionKey, marketKey) => {
   if (marketKey === '1X2') {
     if (optionKey === '1') return `1 `
